@@ -103,4 +103,24 @@ final class OpenCodeSourceTests: XCTestCase {
         XCTAssertEqual(result.status, "missing")
         XCTAssertTrue(result.agents.isEmpty)
     }
+
+    func testUnknownSchemaIsError() {
+        let db = TestDB()
+        defer { db.cleanup() }
+        db.exec("create table something (id text);")
+
+        let result = OpenCodeSource(dbURL: db.url, lookback: 86_400).scan(now: now)
+        XCTAssertEqual(result.status, "error")
+        XCTAssertTrue(result.agents.isEmpty)
+    }
+
+    func testCorruptDatabaseIsError() throws {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".db")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try "not a sqlite database".write(to: url, atomically: true, encoding: .utf8)
+
+        let result = OpenCodeSource(dbURL: url, lookback: 86_400).scan(now: now)
+        XCTAssertEqual(result.status, "error")
+        XCTAssertTrue(result.agents.isEmpty)
+    }
 }

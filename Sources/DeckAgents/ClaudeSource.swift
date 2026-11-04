@@ -93,6 +93,7 @@ public enum ClaudeParser {
             guard let data = line.data(using: .utf8),
                   let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
                   let type = object["type"] as? String else { continue }
+            if (object["isSidechain"] as? Bool) == true { continue }
 
             if let timestamp = object["timestamp"] as? String,
                let date = ISODate.parse(timestamp) {

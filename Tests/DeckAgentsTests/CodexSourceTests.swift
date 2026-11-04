@@ -47,4 +47,20 @@ final class CodexSourceTests: XCTestCase {
         XCTAssertEqual(missing.status, "missing")
         XCTAssertTrue(missing.agents.isEmpty)
     }
+
+    func testLargeRolloutReadsTail() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let day = root.appendingPathComponent("2026/11/04")
+        try FileManager.default.createDirectory(at: day, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let filler = #"{"timestamp":"2026-11-04T19:00:00.000Z","type":"event_msg","payload":{"type":"token_count"}}"# + "\n"
+        let contents = String(repeating: filler, count: 1_200) + [meta, complete].joined(separator: "\n") + "\n"
+        XCTAssertGreaterThan(contents.utf8.count, 65_536)
+        try contents.write(to: day.appendingPathComponent("rollout-c1.jsonl"), atomically: true, encoding: .utf8)
+
+        let result = CodexSource(sessionsDir: root, lookback: 86_400).scan(now: now)
+        XCTAssertEqual(result.agents.first?.status, .idle)
+        XCTAssertEqual(result.agents.first?.project, "mmxss")
+    }
 }

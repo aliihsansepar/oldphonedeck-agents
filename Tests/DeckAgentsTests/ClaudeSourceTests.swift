@@ -39,6 +39,13 @@ final class ClaudeSourceTests: XCTestCase {
         XCTAssertEqual(agent?.status, .working)
     }
 
+    func testSidechainDoesNotKeepParentWorking() {
+        let sidechain = #"{"type":"assistant","isSidechain":true,"timestamp":"2026-11-04T20:00:10.000Z","sessionId":"s2","cwd":"/Users/ali/projects/mmxss","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"file_path":"/tmp/x"}}]}}"#
+        let agent = ClaudeParser.parse(lines: idleLines + [sidechain], sessionID: "s2",
+                                      sourcePath: "/tmp/s2.jsonl", now: now)
+        XCTAssertEqual(agent?.status, .idle)
+    }
+
     func testSourceReadsTailAndMissingDirectory() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let project = root.appendingPathComponent("proj")
@@ -57,5 +64,21 @@ final class ClaudeSourceTests: XCTestCase {
         let missing = ClaudeSource(projectsDir: root.appendingPathComponent("nope"), lookback: 86_400).scan(now: now)
         XCTAssertEqual(missing.status, "missing")
         XCTAssertTrue(missing.agents.isEmpty)
+    }
+
+    func testLargeFileReadsTail() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let project = root.appendingPathComponent("proj")
+        try FileManager.default.createDirectory(at: project, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let filler = #"{"type":"system","subtype":"noise","timestamp":"2026-11-04T19:00:00.000Z"}"# + "\n"
+        let contents = String(repeating: filler, count: 1_200) + workingLines.joined(separator: "\n") + "\n"
+        XCTAssertGreaterThan(contents.utf8.count, 65_536)
+        try contents.write(to: project.appendingPathComponent("s1.jsonl"), atomically: true, encoding: .utf8)
+
+        let result = ClaudeSource(projectsDir: root, lookback: 86_400).scan(now: now)
+        XCTAssertEqual(result.agents.first?.status, .working)
+        XCTAssertEqual(result.agents.first?.project, "mmxss")
     }
 }
