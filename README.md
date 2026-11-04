@@ -19,6 +19,10 @@ No jailbreak, no App Store, nothing to install on the phone: it runs in Safari, 
 - **Fits any iPhone:** a compact 480×320 layout on old phones; full-width landscape and a portrait layout on modern ones.
 - **Modern iPhones also get:** voice input for Take note, and a **Phone** tab that streams the camera (into OBS) and the mic (into BlackHole) to your Mac.
 
+## Agent panel (this fork)
+
+The deck also shows a live, read-only status column for **Claude Code**, **Codex** and **OpenCode** sessions. It reads local transcripts/databases, requires no hooks or agent configuration, and refreshes every 3 seconds. Setup and configuration: [docs/agent-panel-setup.md](docs/agent-panel-setup.md).
+
 ## Requirements
 
 - A Mac with macOS 14 or later and the Xcode Command Line Tools (`xcode-select --install`)
