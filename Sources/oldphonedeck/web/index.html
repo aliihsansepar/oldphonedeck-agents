@@ -43,6 +43,9 @@
   #right { position: absolute; right: 16px; top: 14px; font-size: 11px; font-weight: 600; color: #c7c7cc; white-space: nowrap; }
   #link { display: inline-block; width: 6px; height: 6px; border-radius: 3px; background: #ff453a; margin-right: 5px; vertical-align: 1px; }
   #link.ok { background: #30d158; }
+  #sysBtn { display: inline-block; width: 20px; height: 20px; line-height: 20px; text-align: center;
+    border-radius: 6px; background: rgba(255,255,255,.08); margin-left: 7px; color: #c7c7cc;
+    font-size: 12px; vertical-align: -1px; }
   .batt { display: inline-block; width: 20px; height: 9px; border: 1px solid rgba(255,255,255,.5); border-radius: 3px;
     position: relative; vertical-align: -1px; margin-left: 8px; }
   .batt:after { content: ""; position: absolute; right: -3px; top: 2px; width: 1.5px; height: 5px; background: rgba(255,255,255,.5); border-radius: 0 1px 1px 0; }
@@ -168,6 +171,10 @@
     background: #1c1c1e; box-shadow: inset 0 0 0 .5px rgba(255,255,255,.1), 0 20px 40px rgba(0,0,0,.6); }
   .sheet h2 { margin: 0 0 9px; font-size: 13px; font-weight: 600; }
   .sheet h2 small { font-size: 10.5px; font-weight: 500; color: #8e8e93; }
+  #sysBody { font-size: 12px; color: #d1d1d6; line-height: 18px; max-height: 260px; overflow-y: auto; }
+  #sysBody .srow { padding: 6px 0; border-top: .5px solid rgba(255,255,255,.08); }
+  #sysBody .srow:first-child { border-top: 0; }
+  #sysBody b { color: #f5f5f7; }
   .dot { display: inline-block; width: 8px; height: 8px; border-radius: 4px; background: #d97757; margin-right: 6px; }
   #askText { width: 100%; height: 56px; box-sizing: border-box; border: 0; border-radius: 11px; padding: 8px 10px; resize: none;
     background: #2c2c2e; color: #fff; font: 14px -apple-system, "Helvetica Neue", sans-serif; -webkit-user-select: text; outline: none; }
@@ -254,7 +261,7 @@
   <div id="status">
     <div id="clock"><span id="time">–</span><span id="ampm"></span><span id="date"></span></div>
     <div id="seg"><div data-view="deck" class="on">Deck</div><div data-view="phone">Phone</div></div>
-    <div id="right"><span id="link"></span><span id="macName">Mac</span><span id="phoneBatt" style="display:none"><span class="batt"><i id="phoneBattFill"></i></span></span></div>
+    <div id="right"><span id="link"></span><span id="macName">Mac</span><span id="sysBtn">⌄</span><span id="phoneBatt" style="display:none"><span class="batt"><i id="phoneBattFill"></i></span></span></div>
   </div>
 
   <!-- Ask Claude -->
@@ -277,6 +284,14 @@
       <div class="btns"><div class="btn primary" id="editSave">Save</div><div class="btn" id="editCancel">Cancel</div></div>
       <div id="editCount"></div>
       <div id="editList"></div>
+    </div>
+  </div>
+
+  <div id="system" class="scrim">
+    <div class="sheet">
+      <h2>System</h2>
+      <div id="sysBody"></div>
+      <div class="btns"><div class="btn" id="sysClose">Close</div></div>
     </div>
   </div>
 
@@ -335,7 +350,7 @@
   // Landscape: the stage is 320pt tall and as wide as the screen's shape (480 on a 4S, ~700 on an iPhone 17).
   // Portrait (modern phones held upright): 360pt wide, keys on top, widgets below.
   // The stage sits inside the safe area; the page background fills the rest of the screen.
-  var W = 480, H = 320, portrait = false;
+  var W = 480, H = 320, portrait = false, agentRows = 5;
   function insets() {
     var cs = window.getComputedStyle($('safe'));
     return { t: parseFloat(cs.paddingTop) || 0, r: parseFloat(cs.paddingRight) || 0,
@@ -361,22 +376,23 @@
     $('hint').style.display = 'none';
     var wide = !portrait && W >= 520;
     document.body.className = wide ? 'wide' : '';
-    $('agents').style.display = wide ? 'block' : 'none';
+    $('agents').style.display = (wide || portrait) ? 'block' : 'none';
     if (portrait) {
-      // Everything in one centered stack: keys, now playing, then the two widgets side by side.
-      var stackH = 208 + 8 + 58 + 12 + netH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
+      // Keys, now playing, then the agent panel; net/bat live in the System sheet.
+      agentRows = H < 620 ? 2 : 3;
+      var agentH = H < 620 ? Math.max(150, H - 350) : 190;
+      var stackH = 208 + 8 + 58 + 12 + agentH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
       $('seg').style.top = '50px';
       px($('keys'), { left: (W - 316) / 2, top: top });
       px($('music'), { left: 16, top: top + 208 + 4, width: W - 32 });
-      cardW = (W - 42) / 2; batH = netH;
-      var cardTop = top + 208 + 4 + 58 + 12;
-      px(net, { left: 16, top: cardTop, width: cardW, height: netH });
-      px(bat, { left: 16 + cardW + 10, top: cardTop, width: cardW });
+      px($('agents'), { left: 16, top: top + 208 + 4 + 58 + 12, width: W - 32, height: agentH });
+      cardW = (W - 42) / 2; batH = agentH;
       var pvH = Math.round((W - 32) * 3 / 4);
       px($('pvBox'), { left: 16, top: 72, width: W - 32, height: pvH });
       px($('pCtl'), { left: 16, top: 72 + pvH + 14, width: W - 32 });
-      net.style.display = 'block'; bat.style.display = 'block';
+      net.style.display = 'none'; bat.style.display = 'none';
     } else if (wide) {
+      agentRows = 5;
       $('seg').style.top = '11px';
       cardW = 218; batH = 266;
       px($('keys'), { left: 14, top: 46 });
@@ -387,6 +403,7 @@
       px($('pvBox'), { left: 16, top: 42, width: W - 32 - ctlW - 12, height: 264 });
       px($('pCtl'), { left: W - 16 - ctlW, top: 42, width: ctlW });
     } else {
+      agentRows = 0;
       $('seg').style.top = '11px';
       cardW = W >= 640 ? 150 : 128;
       var right = W - 16, colLeft = right - cardW;
@@ -629,7 +646,7 @@
     function upd() { window.deckPhone({ level: b.level, charging: b.charging }); }
     upd(); b.addEventListener('levelchange', upd); b.addEventListener('chargingchange', upd);
   });
-  var lastBatteries = [];
+  var lastBatteries = [], lastStats = null;
   function renderBatteries(list) {
     lastBatteries = list || [];
     var rows = lastBatteries.slice();
@@ -681,7 +698,7 @@
   }
   function renderAgents() {
     var box = $('agentList'), all = agentState.agents || [];
-    var cap = Math.min(agentState.maxRows || 5, portrait ? 3 : 99);
+    var cap = Math.min(agentState.maxRows || 5, portrait ? agentRows : 99);
     var list = all.slice(0, cap), working = 0, i;
     for (i = 0; i < all.length; i++) if (all[i].status === 'working') working++;
 
@@ -724,6 +741,7 @@
       $('link').className = s === 200 ? 'ok' : '';
       if (s !== 200) return;
       var d = JSON.parse(text);
+      lastStats = d;
       $('macName').textContent = d.mac.replace(/^\S+['’]s?\s+/, '');
       var sp = d.speed || {};
       $('down').textContent = sp.down !== undefined ? fmt(sp.down) : '–';
@@ -737,6 +755,37 @@
     });
   }
   setInterval(pollStats, 2000);
+  function renderSystem() {
+    var body = $('sysBody');
+    body.innerHTML = '';
+    if (!lastStats) { body.appendChild(document.createTextNode('Veri yok')); return; }
+
+    var sp = lastStats.speed || {};
+    var net = document.createElement('div'); net.className = 'srow';
+    net.innerHTML = '<b>Internet</b><br>';
+    net.appendChild(document.createTextNode(
+      '↓ ' + (sp.down !== undefined ? fmt(sp.down) + ' Mbps' : '—') +
+      ' · ↑ ' + (sp.up !== undefined ? fmt(sp.up) + ' Mbps' : '—') +
+      ' · ' + (sp.ping !== undefined ? Math.round(sp.ping) + ' ms' : '—')
+    ));
+    body.appendChild(net);
+
+    var bats = (lastStats.batteries || []).slice();
+    if (phone) bats.unshift({ name: 'iPhone', level: Math.round(phone.level * 100), charging: phone.charging });
+    var bat = document.createElement('div'); bat.className = 'srow';
+    bat.innerHTML = '<b>Batteries</b><br>';
+    if (!bats.length) {
+      bat.appendChild(document.createTextNode('—'));
+    } else {
+      bats.forEach(function (b, i) {
+        if (i) bat.appendChild(document.createElement('br'));
+        bat.appendChild(document.createTextNode(b.name + ' — ' + b.level + '%' + (b.charging ? ' ⚡' : '')));
+      });
+    }
+    body.appendChild(bat);
+  }
+  tap($('sysBtn'), function () { renderSystem(); sheet('system', true); });
+  tap($('sysClose'), function () { sheet('system', false); });
   tap($('net'), function () {
     xhr('POST', url('/speedtest'), '', function () { $('netTitle').textContent = 'Testing…'; toast('Running a speed test (~20 s)'); });
   });
