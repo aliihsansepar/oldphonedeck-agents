@@ -92,6 +92,35 @@
   .chip b.low { color: #ff453a; }
   .chip b.chg { color: #30d158; }
   .empty-note { font-size: 10px; color: #636366; }
+  /* ---- agents ---- */
+  #agents { display: none; padding: 9px 12px 0; }
+  #agentHead { height: 18px; position: relative; }
+  #agentHead h3 { margin: 0; float: left; line-height: 18px; }
+  #agentCount { float: right; font-size: 8.5px; font-weight: 700; color: #30d158;
+    background: rgba(48,209,88,.14); border-radius: 9px; padding: 2px 7px; line-height: 12px; }
+  #agentCount.idle { color: #8e8e93; background: rgba(142,142,147,.14); }
+  #agentList { position: absolute; left: 12px; right: 12px; top: 32px; bottom: 20px; overflow: hidden; }
+  .arow { position: relative; height: 40px; padding: 5px 0 0 14px; box-sizing: border-box;
+    border-top: .5px solid rgba(255,255,255,.08); }
+  .arow:first-child { border-top: 0; }
+  .adot { position: absolute; left: 0; top: 12px; width: 7px; height: 7px; border-radius: 4px; background: #8e8e93; }
+  .adot.working { background: #30d158; box-shadow: 0 0 8px rgba(48,209,88,.7); }
+  .adot.stale { background: #48484a; }
+  .adot.unknown { background: #636366; }
+  .an { font-size: 11.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 44px; }
+  .as { font-size: 9.5px; color: #8e8e93; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; padding-right: 44px; }
+  .at { position: absolute; right: 0; top: 9px; font-size: 8.5px; color: #636366; }
+  .aempty { padding-top: 18px; font-size: 10.5px; color: #636366; text-align: center; }
+  #agentFoot { position: absolute; left: 12px; right: 12px; bottom: 7px; font-size: 8.5px; color: #636366; text-align: center; }
+  #agents.offline { opacity: .55; }
+  #agents.offline #agentFoot { color: #ff453a; }
+  /* wide landscape (iPhone 8 Plus): smaller keys, agent column on the right */
+  .wide #keys { width: 294px; }
+  .wide .key { width: 66px; margin: 0 10px 10px 0; }
+  .wide .key:nth-child(4n) { margin-right: 0; }
+  .wide .cap { width: 66px; height: 66px; border-radius: 17px; }
+  .wide .cap img { left: 9px; top: 9px; width: 48px; height: 48px; }
+  .wide .key .label { font-size: 9.5px; margin-top: 5px; }
   /* ---- now playing ---- */
   #music { position: absolute; height: 52px; padding: 0; }
   #mArt { position: absolute; left: 8px; top: 8px; width: 36px; height: 36px; border-radius: 8px;
@@ -190,6 +219,11 @@
         <div class="mb play" id="mPlay"></div>
         <div class="mb" id="mNext"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M12.5 3v10M3.5 3.6v8.8L10.2 8z" fill="#f5f5f7" stroke="#f5f5f7" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg></div>
       </div>
+    </div>
+    <div id="agents" class="card">
+      <div id="agentHead"><h3>Agents</h3><span id="agentCount">—</span></div>
+      <div id="agentList"></div>
+      <div id="agentFoot">son 24 saat</div>
     </div>
     <div id="net" class="card">
       <h3 id="netTitle">Internet</h3>
@@ -325,6 +359,9 @@
     var net = $('net'), bat = $('bat'), cardW, netH = 104, batH;
     net.className = bat.className = 'card';
     $('hint').style.display = 'none';
+    var wide = !portrait && W >= 520;
+    document.body.className = wide ? 'wide' : '';
+    $('agents').style.display = wide ? 'block' : 'none';
     if (portrait) {
       // Everything in one centered stack: keys, now playing, then the two widgets side by side.
       var stackH = 208 + 8 + 58 + 12 + netH, top = Math.max(90, Math.round((H - stackH) / 2) + 10);
@@ -338,6 +375,17 @@
       var pvH = Math.round((W - 32) * 3 / 4);
       px($('pvBox'), { left: 16, top: 72, width: W - 32, height: pvH });
       px($('pCtl'), { left: 16, top: 72 + pvH + 14, width: W - 32 });
+      net.style.display = 'block'; bat.style.display = 'block';
+    } else if (wide) {
+      $('seg').style.top = '11px';
+      cardW = 218; batH = 266;
+      px($('keys'), { left: 14, top: 46 });
+      px($('music'), { left: 14, top: 242, width: 312, height: 58 });
+      px($('agents'), { left: 336, top: 46, width: 218, height: 266 });
+      net.style.display = 'none'; bat.style.display = 'none';
+      var ctlW = 180;
+      px($('pvBox'), { left: 16, top: 42, width: W - 32 - ctlW - 12, height: 264 });
+      px($('pCtl'), { left: W - 16 - ctlW, top: 42, width: ctlW });
     } else {
       $('seg').style.top = '11px';
       cardW = W >= 640 ? 150 : 128;
@@ -352,6 +400,7 @@
       var ctlW = W >= 640 ? 180 : 150;
       px($('pvBox'), { left: 16, top: 42, width: W - 32 - ctlW - 12, height: 264 });
       px($('pCtl'), { left: W - 16 - ctlW, top: 42, width: ctlW });
+      net.style.display = 'block'; bat.style.display = 'block';
     }
     batteryRows = Math.max(2, Math.floor((batH - 40) / 30)) * 2;   // max chips that fit, two per row
     var spark = $('spark'), sw = cardW - 24, sh = 18;
@@ -370,7 +419,7 @@
     $('phone').className = 'view' + (name === 'phone' ? ' on' : '');
     var segs = $('seg').children;
     for (var i = 0; i < segs.length; i++) segs[i].className = segs[i].getAttribute('data-view') === name ? 'on' : '';
-    if (name === 'phone') phoneEnter(); else pollStats();
+    if (name === 'phone') phoneEnter(); else { pollStats(); loadAgents(); }
     store('view', name);
   }
   if (modern) {
@@ -607,6 +656,68 @@
       box.appendChild(c);
     });
   }
+  // ---------- agents ----------
+  var agentState = { agents: [], sources: {} };
+  function providerName(p) {
+    if (p === 'claude') return 'Claude';
+    if (p === 'codex') return 'Codex';
+    if (p === 'opencode') return 'OpenCode';
+    return p;
+  }
+  function agentAgo(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    if (s < 60) return s + ' sn';
+    if (s < 3600) return Math.round(s / 60) + ' dk';
+    return Math.round(s / 3600) + ' sa';
+  }
+  function loadAgents() {
+    if (view !== 'deck' || document.hidden) return;
+    xhr('GET', url('/agents'), null, function (s, text) {
+      if (s !== 200) { $('agents').className = 'card offline'; return; }
+      try { agentState = JSON.parse(text); } catch (e) { return; }
+      $('agents').className = 'card';
+      renderAgents();
+    });
+  }
+  function renderAgents() {
+    var box = $('agentList'), all = agentState.agents || [];
+    var cap = Math.min(agentState.maxRows || 5, portrait ? 3 : 99);
+    var list = all.slice(0, cap), working = 0, i;
+    for (i = 0; i < all.length; i++) if (all[i].status === 'working') working++;
+
+    $('agentCount').textContent = working ? working + ' ÇALIŞIYOR' : 'BOŞTA';
+    $('agentCount').className = working ? '' : 'idle';
+
+    var labels = { claude: 'Claude', codex: 'Codex', opencode: 'OpenCode' }, missing = [];
+    for (var key in (agentState.sources || {})) {
+      if (agentState.sources[key] !== 'ok') missing.push(labels[key] || key);
+    }
+    $('agentFoot').textContent = missing.length ? missing.join(', ') + ': veri yok' : 'son 24 saat';
+
+    if (!list.length) {
+      box.innerHTML = '<div class="aempty">Agent verisi yok</div>';
+      return;
+    }
+    box.innerHTML = '';
+    list.forEach(function (a) {
+      var row = document.createElement('div'), dot = document.createElement('span');
+      row.className = 'arow';
+      dot.className = 'adot ' + (a.status || 'unknown');
+      var name = document.createElement('div'); name.className = 'an';
+      name.textContent = providerName(a.provider) + ' · ' + a.project;
+      var sub = document.createElement('div'); sub.className = 'as';
+      sub.textContent = a.detail || a.title || '';
+      var time = document.createElement('div'); time.className = 'at';
+      time.textContent = agentAgo(Date.now() - a.lastActivity * 1000);
+      row.appendChild(dot); row.appendChild(name); row.appendChild(sub); row.appendChild(time);
+      tap(row, function () {
+        xhr('POST', url('/focus'), 'id=' + encodeURIComponent(a.id));
+      });
+      box.appendChild(row);
+    });
+  }
+  setInterval(loadAgents, 3000);
+
   function pollStats() {
     if (view !== 'deck') return;
     xhr('GET', url('/stats'), null, function (s, text) {
