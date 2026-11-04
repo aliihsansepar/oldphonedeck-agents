@@ -1,11 +1,13 @@
 import AppKit
 import ApplicationServices
+import DeckAgents
 
 // MARK: Options
 
 struct Options {
     var port: UInt16 = 8045                // http = port, https = port+2, secure WebSocket = port+3
     var micDevice = "BlackHole"            // output device that receives a modern iPhone's mic
+    var dumpAgents = false
 
     init(_ args: [String]) {
         var it = args.dropFirst().makeIterator()
@@ -13,11 +15,13 @@ struct Options {
             switch a {
             case "--port": port = UInt16(it.next() ?? "") ?? port
             case "--mic-device": micDevice = it.next() ?? micDevice
+            case "--dump-agents": dumpAgents = true
             case "-h", "--help":
                 print("""
                 oldphonedeck: turn an old iPhone into a Stream Deck-style control panel for your Mac
                   --port N          HTTP port (default 8045; HTTPS uses N+2, WebSocket N+3)
                   --mic-device NAME audio device that receives the phone's mic (default BlackHole)
+                  --dump-agents     print the agent snapshot as JSON and exit
                 """)
                 exit(0)
             default: print("Unknown option \(a) (try --help)"); exit(2)
@@ -29,6 +33,18 @@ struct Options {
 setvbuf(stdout, nil, _IOLBF, 0)
 let opts = Options(CommandLine.arguments)
 let configDir = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".oldphonedeck")
+let agentsConfig = AgentConfig.load(from: configDir.appendingPathComponent("agents.json"))
+let agentStore = makeAgentStore(config: agentsConfig)
+
+if opts.dumpAgents {
+    agentStore.refreshNow()
+    let object = agentStore.snapshot().jsonObject(now: Date(), redactTitles: agentsConfig.redactTitles)
+    if let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+       let text = String(data: data, encoding: .utf8) {
+        print(text)
+    }
+    exit(0)
+}
 
 // MARK: Access token (anyone on the Wi-Fi could otherwise open apps on your Mac)
 
@@ -114,6 +130,16 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
     let p = req.params
 
     switch (req.method, req.path) {
+    case ("GET", "/agents"):
+        conn.respondJSON(agentStore.snapshot().jsonObject(now: Date(), redactTitles: agentsConfig.redactTitles))
+    case ("POST", "/focus"):
+        guard let path = agentStore.path(for: p["id"] ?? "") else {
+            return conn.respond(404, text: "unknown agent")
+        }
+        DispatchQueue.main.async {
+            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+        }
+        conn.respond(text: "ok")
     case ("GET", "/info"):
         conn.respondJSON(["camera": phoneMedia.isLive])
     case ("GET", "/stats"):
@@ -169,6 +195,7 @@ let routes: (HTTPRequest, HTTPConnection) -> Void = { req, conn in
     }
 }
 server.start(routes)
+agentStore.start()
 
 // HTTPS + secure WebSocket for modern iPhones (Safari needs a secure page for camera, mic and speech).
 let lanIP = lanAddress()
